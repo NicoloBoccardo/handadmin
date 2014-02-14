@@ -1,0 +1,17 @@
+source/objs/qb_pos_stiff_demo.o
+source/objs/qbbackup.o
+source/objs/qbinit.o
+source/objs/qbmove.o
+source/objs/qbmove_communications.o
+source/objs/qbmoveadmin.o
+source/objs/qbparam.o
+source/objs/qbparser.o
+source/objs/qbtest.o
+source/bin/qb_pos_stiff_demo
+source/bin/qbbackup
+source/bin/qbinit
+source/bin/qbmove
+source/bin/qbmoveadmin
+source/bin/qbparam
+source/bin/qbparser
+source/bin/qbtest
