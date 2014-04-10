@@ -30,3 +30,9 @@ emg_values.csv
 source/bin/qbmove.exe
 source/bin/qbmoveadmin.exe
 source/bin/qbparam.exe
+source/bin/handmove
+source/bin/handmoveadmin
+source/bin/handparam
+source/objs/handmove.o
+source/objs/handmoveadmin.o
+source/objs/handparam.o

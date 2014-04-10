@@ -7,35 +7,33 @@ CFLAGS = -c
 LMFLAGS = -lm
 # PFLAGS = -framework Phidget21 -I /Library/Frameworks/Phidget21.framework/Headers
 
-# files
-#SOURCES = qbmove.c qbmoveadmin.c qbinit.c qbtest.c qb_pos_stiff_demo.c qbbackup.c
 
 
-all:qbmove qbmoveadmin qbparam
+all:handmove handmoveadmin handparam
 
     
-qbmove:objs/qbmove.o objs/qbmove_communications.o bin
-	$(COMPILER) $(PFLAGS) objs/qbmove.o objs/qbmove_communications.o -o bin/qbmove $(LMFLAGS)
+handmove:objs/handmove.o objs/qbmove_communications.o bin
+	$(COMPILER) $(PFLAGS) objs/handmove.o objs/qbmove_communications.o -o bin/handmove $(LMFLAGS)
 
-qbmoveadmin:objs/qbmoveadmin.o objs/qbmove_communications.o bin
-	$(COMPILER) objs/qbmoveadmin.o objs/qbmove_communications.o -o bin/qbmoveadmin $(LMFLAGS)
+handmoveadmin:objs/handmoveadmin.o objs/qbmove_communications.o bin
+	$(COMPILER) objs/handmoveadmin.o objs/qbmove_communications.o -o bin/handmoveadmin $(LMFLAGS)
 
-qbparam:objs/qbparam.o objs/qbmove_communications.o bin
-	$(COMPILER) objs/qbparam.o objs/qbmove_communications.o -o bin/qbparam $(LMFLAGS)
+handparam:objs/handparam.o objs/qbmove_communications.o bin
+	$(COMPILER) objs/handparam.o objs/qbmove_communications.o -o bin/handparam $(LMFLAGS)
 
 
 
 objs/qbmove_communications.o:qbmoveAPI/qbmove_communications.c objs
 	$(COMPILER) $(CFLAGS) qbmoveAPI/qbmove_communications.c -o objs/qbmove_communications.o
 
-objs/qbmove.o:qbmove.c objs
-	$(COMPILER) $(CFLAGS) $(PFLAGS) qbmove.c -o objs/qbmove.o 
+objs/handmove.o:handmove.c objs
+	$(COMPILER) $(CFLAGS) $(PFLAGS) handmove.c -o objs/handmove.o 
 
-objs/qbmoveadmin.o:qbmoveadmin.c objs
-	$(COMPILER) $(CFLAGS) qbmoveadmin.c -o objs/qbmoveadmin.o
+objs/handmoveadmin.o:handmoveadmin.c objs
+	$(COMPILER) $(CFLAGS) handmoveadmin.c -o objs/handmoveadmin.o
 
-objs/qbparam.o:qbparam.c objs
-	$(COMPILER) $(CFLAGS) qbparam.c -o objs/qbparam.o
+objs/handparam.o:handparam.c objs
+	$(COMPILER) $(CFLAGS) handparam.c -o objs/handparam.o
 
 
 
