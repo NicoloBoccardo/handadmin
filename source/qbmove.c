@@ -1,10 +1,6 @@
 //==================================================================     defines
 
-
-//#define PHIDGETS_BRIDGE
 //#define TEST_MODE
-
-//===================================================================      const
 
 
 //=================================================================     includes
@@ -28,12 +24,9 @@
 // #include <termios.h> /* POSIX terminal control definitions */
 // #include <sys/ioctl.h>
 
-#ifdef PHIDGETS_BRIDGE
-    #include <phidget21.h>
-#endif
-
 #if defined(_WIN32) || defined(_WIN64)
     #include <windows.h>
+    #define sleep(x) Sleep(1000 * x)
 #endif
 
 //===============================================================     structures
@@ -54,12 +47,13 @@ static const struct option longOpts[] = {
     { "set_zeros", no_argument, NULL, 'z'},
     { "use_gen_sin", no_argument, NULL, 'k'},
     { "get_currents", no_argument, NULL, 'c'},
+    { "get_emg", no_argument, NULL, 'q'},
     { "bootloader", no_argument, NULL, 'b'},
     { "set_pos_stiff", required_argument, NULL, 'e'},
     { NULL, no_argument, NULL, 0 }
 };
 
-static const char *optString = "s:adgptvh?f:lwzkcbe:";
+static const char *optString = "s:adgptvh?f:lwzkcqbe:";
 
 struct global_args {
     int device_id;
@@ -78,16 +72,21 @@ struct global_args {
     int flag_get_currents;          /* -c option */
     int flag_bootloader_mode;       /* -b option */
     int flag_set_pos_stiff;         /* -e option */
+    int flag_get_emg;               /* -q option */ 
 
 
     short int inputs[NUM_OF_MOTORS];
     short int measurements[NUM_OF_SENSORS];
     short int measurement_offset[NUM_OF_SENSORS];
     short int currents[NUM_OF_MOTORS];
+    short int emg[NUM_OF_EMGS];
     char filename[255];
     char log_file[255];
+    short int calib_speed;
+    short int calib_repetitions;
     
     FILE* log_file_fd;
+    FILE* emg_file;
 } global_args;  //multiple boards on multiple usb
 
 struct position {
@@ -130,103 +129,13 @@ void display_usage( void );
  */
 float** file_parser(char*, int*, int*);
 
-/** CTRL-c handler 1
+/** CTRL-c handlers
  */
 void int_handler(int sig);
 
-/** CTRL-c handler 2
- */
-void int_handler_2(int sig); 
+void int_handler_2(int sig);
 
-
-//==================================================== phidgets functions
-
-#ifdef PHIDGETS_BRIDGE
-
-    int CCONV AttachHandler(CPhidgetHandle phid, void *userptr)
-    {
-    	CPhidgetBridgeHandle bridge = (CPhidgetBridgeHandle)phid;
-
-    	CPhidgetBridge_setEnabled(bridge, 0, PTRUE);
-    	CPhidgetBridge_setEnabled(bridge, 1, PFALSE);
-    	CPhidgetBridge_setEnabled(bridge, 2, PFALSE);
-    	CPhidgetBridge_setEnabled(bridge, 3, PFALSE);
-
-    	CPhidgetBridge_setGain(bridge, 0, PHIDGET_BRIDGE_GAIN_128);
-    	CPhidgetBridge_setGain(bridge, 1, PHIDGET_BRIDGE_GAIN_16);
-    	CPhidgetBridge_setGain(bridge, 2, PHIDGET_BRIDGE_GAIN_32);
-    	CPhidgetBridge_setGain(bridge, 3, PHIDGET_BRIDGE_GAIN_64);
-    	CPhidgetBridge_setDataRate(bridge, 1);
-
-    	printf("Attach handler ran!\n");
-    	return 0;
-    }
-
-    int CCONV DetachHandler(CPhidgetHandle phid, void *userptr)
-    {
-    	printf("Detach handler ran!\n");
-    	return 0;
-    }
-
-    int CCONV ErrorHandler(CPhidgetHandle phid, void *userptr, int ErrorCode, const char *errorStr)
-    {
-    	printf("Error event: %s\n",errorStr);
-    	return 0;
-    }
-
-    void display_generic_properties(CPhidgetHandle phid)
-    {
-    	int sernum, version;
-    	const char *deviceptr;
-    	CPhidget_getDeviceType(phid, &deviceptr);
-    	CPhidget_getSerialNumber(phid, &sernum);
-    	CPhidget_getDeviceVersion(phid, &version);
-
-    	printf("%s\n", deviceptr);
-    	printf("Version: %8d SerialNumber: %10d\n", version, sernum);
-    	return;
-    }
-
-    int CCONV data(CPhidgetBridgeHandle phid, void *userPtr, int index, double val)
-    {	
-        current_force = m*val + q;
-
-    	return 0;
-    }
-
-
-    void test()
-    {
-    	//gettimeofday(&t_ref, &foo);
-    	
-        const char *err;	
-    	int result;
-    	CPhidgetBridgeHandle bridge;
-
-    	CPhidgetBridge_create(&bridge);
-
-    	CPhidget_set_OnAttach_Handler((CPhidgetHandle)bridge, AttachHandler, NULL);
-    	CPhidget_set_OnDetach_Handler((CPhidgetHandle)bridge, DetachHandler, NULL);
-    	CPhidget_set_OnError_Handler((CPhidgetHandle)bridge, ErrorHandler, NULL);
-    	CPhidgetBridge_set_OnBridgeData_Handler(bridge, data, NULL);
-
-    	CPhidget_open((CPhidgetHandle)bridge, -1);
-
-    	//Wait for 1 second, otherwise exit
-    	if(result = CPhidget_waitForAttachment((CPhidgetHandle)bridge, 1000))
-    	{
-
-    		CPhidget_getErrorDescription(result, &err);
-    		printf("Problem waiting for attachment: %s\n", err);
-    		return;
-    	}
-
-    	display_generic_properties((CPhidgetHandle)bridge);
-
-    	return;
-    }
-
-#endif
+void int_handler_3(int sig);
 
 
 //==============================================================================
@@ -294,6 +203,12 @@ int main (int argc, char **argv)
                 global_args.flag_set_pos_stiff = 1;
                 break;
             case 'g':
+                printf("Specify speed [0 - 200]: ");
+                scanf("%d", &aux_int);
+                global_args.calib_speed = (short int)aux_int;
+                printf("Specify repetitions [0 - 32767]: ");
+                scanf("%d", &aux_int);
+                global_args.calib_repetitions = (short int)aux_int;
                 global_args.flag_get_measurements = 1;
                 break;
             case 'a':
@@ -332,6 +247,9 @@ int main (int argc, char **argv)
                 break;
             case 'b':
                 global_args.flag_bootloader_mode = 1;
+                break;
+            case 'q':
+                global_args.flag_get_emg = 1;
                 break;
             case 'h':
             case '?':
@@ -548,7 +466,7 @@ int main (int argc, char **argv)
                     global_args.inputs[0], global_args.inputs[1]);
 
         commSetPosStiff(&comm_settings_1, global_args.device_id,
-                &global_args.inputs);
+                global_args.inputs);
 
     }
 
@@ -558,10 +476,40 @@ int main (int argc, char **argv)
     if(global_args.flag_get_measurements)
     {
 
-        // short int my_values[2 + NUM_OF_SENSORS];
+        //int i;
+        //short int my_values[3];
 
-        // commGetCurrAndMeas(&comm_settings_1, global_args.device_id,
+        // FILE* filep;
+        // filep = fopen(HAND_CALIBRATION, "w");
+        // if (filep == NULL) {
+        //     printf("Failed opening file\n");
+        // }
+
+        printf("Speed: %d     Repetitions: %d\n", global_args.calib_speed, global_args.calib_repetitions);
+        commCalibrate(&comm_settings_1, global_args.device_id, global_args.calib_speed, global_args.calib_repetitions);
+
+        usleep(100000);
+
+        //for (i = 0; i < 324; i++) {
+        // while(1) {
+        //     commGetCurrAndMeas(&comm_settings_1, global_args.device_id,
         //         my_values);
+
+        //     printf("Curr1: %d \tMeas1: %d \t Flag: %d\n", my_values[0], my_values[1], my_values[2]);
+        //     fprintf(filep, "%d,%d\n", my_values[0], my_values[1]);
+
+        //     // if (my_values[2] == 0) {
+        //     //     break;
+        //     // }
+
+        //     usleep(100000);
+        // }
+
+        // fclose(filep);
+
+        
+
+        
 
         // printf("currents: %d, %d\n", my_values[0], my_values[1]);
         // printf("meas: %d %d %d\n", my_values[2], my_values[3], my_values[4]);
@@ -578,17 +526,17 @@ int main (int argc, char **argv)
   //       }
   //       printf("\n");
 
-        while(1) {
-            commGetMeasurements(&comm_settings_1, global_args.device_id,
-                    global_args.measurements);
+        // while(1) {
+        //     commGetMeasurements(&comm_settings_1, global_args.device_id,
+        //             global_args.measurements);
 
-            printf("measurements: ");
-            for (i = 0; i < NUM_OF_SENSORS; i++) {
-                printf("%d\t", global_args.measurements[i]);
-            }
-            printf("\n");
-            usleep(100000);
-        }
+        //     printf("measurements: ");
+        //     for (i = 0; i < NUM_OF_SENSORS; i++) {
+        //         printf("%d\t", global_args.measurements[i]);
+        //     }
+        //     printf("\n");
+        //     usleep(100000);
+        // }
     }
 
     if(global_args.flag_bootloader_mode) {
@@ -613,6 +561,29 @@ int main (int argc, char **argv)
 
             printf("Current 1: %d\t Current 2: %d\n", global_args.currents[0], global_args.currents[1]);
             usleep(100000);
+        }
+    }
+
+
+//==========================================================     get_emg
+
+    if(global_args.flag_get_emg) {
+        if(global_args.flag_verbose) {
+            puts("Getting emg signals.");
+        }
+
+        signal(SIGINT, int_handler_3);
+        global_args.emg_file = fopen(EMG_SAVED_VALUES, "w");
+
+
+        while(1) {
+            commGetEmg(&comm_settings_1, global_args.device_id,
+                global_args.emg);
+            if(global_args.flag_verbose) {
+                printf("Signal 1: %d\t Signal 2: %d\n", global_args.emg[0], global_args.emg[1]);
+            }
+            fprintf(global_args.emg_file, "%d,%d\n", global_args.emg[0], global_args.emg[1]);
+            usleep(10000);
         }
     }
     
@@ -788,7 +759,7 @@ int main (int argc, char **argv)
         // variable declaration
         struct timeval t_ref, t_act, begin, end;
         struct timezone foo;
-        short int retrieved_values[2 + NUM_OF_SENSORS];
+        //short int retrieved_values[2 + NUM_OF_SENSORS];
         int deltat = 0; //time interval in millisecs
         int num_values = 0;
         float** array;
@@ -1101,6 +1072,16 @@ void int_handler_2(int sig) {
 
     //Activate board 
     commActivate(&comm_settings_1, global_args.device_id, 1);
+
+    exit(1);
+}
+
+void int_handler_3(int sig) {
+    printf("Closing file and quitting application...\n");
+
+    fclose(global_args.emg_file);
+
+    printf("DONE\n");
 
     exit(1);
 }

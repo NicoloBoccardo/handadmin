@@ -212,7 +212,7 @@ int initMemory() {
 int calibrate() {
 	printf("Calibrating...");
 	fflush(stdout);
-	if(!commCalibrate(&comm_settings_t, BROADCAST_ID)) {
+	if(!commCalibrate(&comm_settings_t, BROADCAST_ID, 10, 1)) {
 		printf("DONE\n");
 		return 1;
 	} else {

@@ -2,6 +2,7 @@
 
 #define NUM_OF_SENSORS 3
 #define NUM_OF_MOTORS 2
+#define NUM_OF_EMGS 2
 #define PI 3.14159265359
 
 #define DEFAULT_RESOLUTION 1
@@ -22,3 +23,5 @@
 #define QBMOVE_FILE "./conf_files/qbmove.conf"
 #define OLD_QBBACKUP_FOLDER "./../old_qb_backup/"
 #define NEW_QBBACKUP_FOLDER "./../new_qb_backup/"
+#define HAND_CALIBRATION "./../calibration.csv"
+#define EMG_SAVED_VALUES "./../emg_values.csv"

@@ -205,10 +205,17 @@ int main (int argc, char **argv)
             break;
         case 'm':
             puts("\nChoose Input Mode:\n");
-            puts("[0] - Normal: Motors are commanded using the communication interface (USB, for example).");
-            puts("[1] - Encoder 3: Encoder 3 works as a 'joystick' for the motors.");
+            puts("[0] - Default: Motors are commanded using the communication interface.");
+            puts("[1] - Encoder 3 works as a 'joystick' for the motors.");
+            puts("");
+            puts("--- EMG PART ---");
+            puts("[2] - EMG signal is used to proportionally control hand closure.");
+            puts("[3] - EMG signals are used to control opening and closing of the hand.");
             puts("");
             scanf("%d",&aux_int);
+            if (aux_int < 1 || aux_int > 3) {
+                aux_int = 0;
+            }
             global_args.input_mode = aux_int;
             global_args.flag_input_mode = 1;
             break;
