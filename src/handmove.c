@@ -5,7 +5,7 @@
 
 //=================================================================     includes
 
-#include "qbmoveAPI/qbmove_communications.h"
+#include "../../qbmoveAPI/qbmove_communications.h"
 #include "definitions.h"
 
 #include <stdio.h>
@@ -45,7 +45,6 @@ static const struct option longOpts[] = {
     { "log", no_argument, NULL, 'l'},
     { "test_force", no_argument, NULL, 'w'},
     { "set_zeros", no_argument, NULL, 'z'},
-    { "use_gen_sin", no_argument, NULL, 'k'},
     { "get_currents", no_argument, NULL, 'c'},
     { "get_emg", no_argument, NULL, 'q'},
     { "bootloader", no_argument, NULL, 'b'},
@@ -68,7 +67,6 @@ struct global_args {
     int flag_log;                   /* -l option */
     int flag_test;					/* -w option */
     int flag_set_zeros;             /* -z option */
-    int flag_use_gen_sin;           /* -k option */
     int flag_get_currents;          /* -c option */
     int flag_bootloader_mode;       /* -b option */
     int flag_set_pos_stiff;         /* -e option */
@@ -180,7 +178,6 @@ int main (int argc, char **argv)
     global_args.flag_log                = 0;
     global_args.flag_test			    = 0;
     global_args.flag_set_zeros          = 0;
-    global_args.flag_use_gen_sin        = 0;
     global_args.flag_bootloader_mode    = 0;
     global_args.flag_set_pos_stiff      = 0;
     
@@ -232,9 +229,6 @@ int main (int argc, char **argv)
                 break;
             case 'l':
                 global_args.flag_log = 1;
-                break;
-            case 'k':
-                global_args.flag_use_gen_sin = 1;
                 break;
             case 'z':
                 global_args.flag_set_zeros = 1;
@@ -486,7 +480,7 @@ int main (int argc, char **argv)
         // }
 
         printf("Speed: %d     Repetitions: %d\n", global_args.calib_speed, global_args.calib_repetitions);
-        commCalibrate(&comm_settings_1, global_args.device_id, global_args.calib_speed, global_args.calib_repetitions);
+        commHandCalibrate(&comm_settings_1, global_args.device_id, global_args.calib_speed, global_args.calib_repetitions);
 
         usleep(100000);
 
@@ -609,149 +603,6 @@ int main (int argc, char **argv)
            puts("Turning QB Move off.\n");
         commActivate(&comm_settings_1, global_args.device_id, 0);
     }    
-
-//==============================================================     use_gen_sin
-
-    if(global_args.flag_use_gen_sin)
-    {
-        //variable declaration
-        float delta_t;                      // milliseconds between values
-        float amplitude_1, amplitude_2;     // sinusoid amplitude
-        float bias_1, bias_2;               // sinusoid bias
-        float freq_1, freq_2;               // sinusoid frequency
-        float period_1, period_2;           // sinusoid period = 1/frequency
-        float phase_shift;                  // angular shift between sinusoids
-        float total_time;                   // total execution time (if 0 takes
-                                            //   number of values as parameter)
-        int num_values;                     // number of values (ignored if
-                                            //   total time != 0)
-
-        float angle_1 = 0;                  // actual angle
-        float angle_2 = 0;                  // actual angle
-        float inc_1, inc_2;                 // angle increment for every step
-
-        struct timeval t_act, begin, end;
-        struct timezone foo;
-
-        int error_counter = 0;
-
-        if(global_args.flag_log) {
-            strcpy(global_args.log_file, "sin_log.csv");
-            global_args.log_file_fd = fopen(global_args.log_file, "w");
-        }
-        
-
-        // CTRL-C handler
-        signal(SIGINT, int_handler);
-
-
-        if(global_args.flag_verbose) {
-           puts("Generate sinusoidal inputs\n");
-        }
-
-        // opening file
-        FILE* filep;
-        filep = fopen(SIN_FILE, "r");
-        if (filep == NULL) {
-            printf("Failed opening file\n");
-        }
-
-        fscanf(filep, "delta_t %f\n", &delta_t);
-        fscanf(filep, "amplitude_1 %f\n", &amplitude_1);
-        fscanf(filep, "amplitude_2 %f\n", &amplitude_2);
-        fscanf(filep, "bias_1 %f\n", &bias_1);
-        fscanf(filep, "bias_2 %f\n", &bias_2);
-        fscanf(filep, "freq_1 %f\n", &freq_1);
-        fscanf(filep, "freq_2 %f\n", &freq_2);
-        fscanf(filep, "phase_shift %f\n", &phase_shift);
-        fscanf(filep, "total_time %f\n", &total_time);
-        fscanf(filep, "num_values %d\n", &num_values);
-
-
-        // closing file
-        fclose(filep);
-
-        // if total_time set, calculate num_values
-        if (total_time != 0) {
-            num_values = (total_time*1000)/delta_t;
-            printf("Num_values: %d\n", num_values);
-        }
-
-        // calculate periods
-        period_1 = 1/freq_1;
-        period_2 = 1/freq_2;
-
-        // deg to rad
-        phase_shift = phase_shift*PI/180.0;
-
-        // calculate increment for every step
-        inc_1 = (2*PI)/(period_1/(delta_t/1000.0));
-        inc_2 = (2*PI)/(period_2/(delta_t/1000.0));
-
-        printf("inc1 %f, inc2 %f\n", inc_1, inc_2); //XXX
-
-        // activate motors
-        commActivate(&comm_settings_1, global_args.device_id, 1);
-
-        // retrieve begin time
-        gettimeofday(&begin, &foo);
-
-        for(i=0; i<num_values; i++) {
-            // wait for next value
-            while (1) {
-                gettimeofday(&t_act, &foo);
-                if (timevaldiff(&begin, &t_act) >= i * delta_t * 1000) {
-                    break;
-                }
-            }
-
-            // update measurements
-            if (commGetMeasurements(&comm_settings_1, global_args.device_id,
-                    global_args.measurements)) {
-                error_counter++;
-            }
-            for (k = 0; k < NUM_OF_SENSORS; k++) {
-                glob_measurements[k] = global_args.measurements[k]/correction_factor[k];
-            }
-            
-            // update inputs
-            global_args.inputs[0] = (cos(angle_1)*amplitude_1 + bias_1)*correction_factor[0];
-            global_args.inputs[1] = (cos(angle_2 + phase_shift)*amplitude_2 + bias_2)*correction_factor[1];
-                
-            // set new inputs
-            commSetInputs(&comm_settings_1, global_args.device_id, global_args.inputs);
-
-            // update angle position
-            angle_1 += inc_1;
-            angle_2 += inc_2;
-
-            //log file
-            if (global_args.flag_log) {
-                for (k = 0; k < NUM_OF_SENSORS; k++) {
-                    fprintf(global_args.log_file_fd, "%f,\t", glob_measurements[k]);
-                }
-                fprintf(global_args.log_file_fd, "%f,\t%f\n",
-                    (float)global_args.inputs[0]/correction_factor[0], (float)global_args.inputs[1]/correction_factor[1]);
-                // fprintf(global_args.log_file_fd, "%d,\t%d\n",
-                //     global_args.currents[0], global_args.currents[1]);
-            }
-
-        }
-
-        // get time at the end of for cycle
-        gettimeofday(&end, &foo);
-
-        // reset motor  position
-        global_args.inputs[0] = 0;
-        global_args.inputs[1] = 0;
-        commSetInputs(&comm_settings_1, global_args.device_id,
-                global_args.inputs);
-
-        printf("total time (millisec): %f\n", timevaldiff(&begin, &end)/1000.0);
-        printf("Error counter: %d\n", error_counter);
-
-    }
-
 
 //===============================================================     input file
     
@@ -988,9 +839,9 @@ float** file_parser( char* filename, int* deltat, int* num_values )
         fscanf(filep, "%d,%d", deltat, num_values);
 
         //alloc memory for the arrays
-        array = malloc(2*sizeof(float*));
-        array[0] = malloc(*num_values*sizeof(float));
-        array[1] = malloc(*num_values*sizeof(float));
+        array = (float**)malloc(2*sizeof(float*));
+        array[0] = (float*)malloc(*num_values*sizeof(float));
+        array[1] = (float*)malloc(*num_values*sizeof(float));
 
         //read num_values line of file and store them in array
         for(i=0; i<*num_values; i++) {
@@ -1112,7 +963,6 @@ void display_usage( void )
     puts(" -d, --deactivate                 Deactivate the QB Move.");
     puts(" -z, --set_zeros                  Set zero position for all sensors");
     puts("");
-    puts(" -k, --use_gen_sin                Sinusoidal inputs using sin.conf file");
     puts(" -f, --file <filename>            Pass a CSV file as input");
     puts("");
     puts(" -p, --ping                       Get info on the device.");
