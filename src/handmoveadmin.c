@@ -60,55 +60,50 @@
 
 
 static const struct option longOpts[] = {
-    // { "set_inputs", required_argument, NULL, 's' },
-    { "get_measurements", required_argument, NULL, 'g' },
     { "id", required_argument, NULL, 'i' },
     { "PID_control_parameters", no_argument, NULL, 'k' },
-    { "activate_on_startup", required_argument, NULL, 'a' },
-    { "deactivate_on_startup", required_argument, NULL, 'd' },
+    { "activate_on_startup", no_argument, NULL, 'a' },
+    { "deactivate_on_startup", no_argument, NULL, 'd' },
     { "resolution", no_argument, NULL, 's' },
     { "input_mode", no_argument, NULL, 'm' },
     { "meas_multiplier", required_argument, NULL, 'u' },
     { "meas_offset", required_argument, NULL, 'o' },
-    { "filter", required_argument, NULL, 'f' },
-    { "deadzone", required_argument, NULL, 'z' },
     { "ping", no_argument, NULL, 'p' },
     { "restore", no_argument, NULL, 'r' },
     { "list_devices", no_argument, NULL, 'l' },
-    { "serial_port", no_argument, NULL, 't' },    
-    { "verbose", no_argument, NULL, 'v' },
-    { "help", no_argument, NULL, 'h' },
+    { "serial_port", no_argument, NULL, 't' },
     { "set_limit", no_argument, NULL, 'q' },
     { "activate_limit", required_argument, NULL, 'w' },
     { "max_step", no_argument, NULL, 'b'},
+    { "max_current", required_argument, NULL, 'c'},
+    { "verbose", no_argument, NULL, 'v' },
+    { "help", no_argument, NULL, 'h' },
     { NULL, no_argument, NULL, 0 }
 };
 
-static const char *optString = "g:i:kadmsu:o:f:z:prltvhqw:b?";
+static const char *optString = "i:kadsmu:o:prltqwbc:vh?";
 
 struct structglobal_args {
     int device_id;
-    // int flag_set_inputs;     /* -s option */
-    int flag_get_measurements;  /* -g option */
     int flag_id;                /* -i option */
     int flag_pid_control;       /* -k option */
     int flag_activation;        /* -a option */
-    int flag_deactivation;      /* -d option */    
-    int flag_pos_resolution;    /* -s option */    
-    int flag_input_mode;        /* -m option */    
-    int flag_meas_multiplier;   /* -u option */    
-    int flag_meas_offset;       /* -o option */    
-    int flag_filter;            /* -f option */    
-    int flag_deadzone;          /* -f option */    
+    int flag_deactivation;      /* -d option */
+    int flag_pos_resolution;    /* -s option */
+    int flag_input_mode;        /* -m option */
+    int flag_meas_multiplier;   /* -u option */
+    int flag_meas_offset;       /* -o option */
     int flag_ping;              /* -p option */
-    int flag_restore;           /* -p option */
-    int flag_list_devices;      /* -l option */    
-    int flag_serial_port;       /* -t option */    
-    int flag_verbose;           /* -v option */
+    int flag_restore;           /* -r option */
+    int flag_list_devices;      /* -l option */
+    int flag_serial_port;       /* -t option */
     int flag_set_limit;         /* -q option */
     int flag_activate_limit;    /* -w option */
     int flag_max_step;          /* -b option */
-    
+    int flag_max_current;       /* -c option */
+    int flag_verbose;           /* -v option */
+
+
     unsigned char           new_id;
     unsigned char           input_mode;
     unsigned char           pos_resolution[NUM_OF_SENSORS];    
@@ -117,12 +112,11 @@ struct structglobal_args {
     float                   measurement_multiplier[NUM_OF_SENSORS];
     float                   meas_multiplier;    
     float                   pid_control[3];
-    float                   filter;
-    float                   deadzone;
     unsigned char           startup_activation;
     unsigned char           activate_limit;
     int                     max_step_pos;
     int                     max_step_neg;
+    int16_t                 max_current;
 } global_args;
 
 //=====================================================     function definitions
@@ -156,22 +150,22 @@ int main (int argc, char **argv)
     char aux_string[10000];
     // unsigned int aux_uint;
 
-    global_args.device_id           = 0;
-    global_args.flag_id             = 0;
-    global_args.flag_pid_control      = 0;
-    global_args.flag_activation     = 0;
-    global_args.flag_deactivation   = 0;
-    global_args.flag_input_mode     = 0;
-    global_args.flag_pos_resolution = 0;
-    global_args.flag_meas_offset    = 0;
+    global_args.device_id            = 0;
+    global_args.flag_id              = 0;
+    global_args.flag_pid_control     = 0;
+    global_args.flag_activation      = 0;
+    global_args.flag_deactivation    = 0;
+    global_args.flag_input_mode      = 0;
+    global_args.flag_pos_resolution  = 0;
+    global_args.flag_meas_offset     = 0;
     global_args.flag_meas_multiplier = 0;
-    global_args.flag_filter         = 0;
-    global_args.flag_list_devices   = 0;
-    global_args.flag_serial_port    = 0;
-    global_args.flag_ping           = 0;
-    global_args.flag_restore        = 0;
-    global_args.flag_verbose        = 0;
-    global_args.flag_max_step       = 0;
+    global_args.flag_list_devices    = 0;
+    global_args.flag_serial_port     = 0;
+    global_args.flag_ping            = 0;
+    global_args.flag_restore         = 0;
+    global_args.flag_verbose         = 0;
+    global_args.flag_max_step        = 0;
+    global_args.flag_max_current     = 0;
 
 //=======================================================     processing options
 
@@ -263,14 +257,6 @@ int main (int argc, char **argv)
             #endif
             global_args.flag_meas_offset = 1;
             break;
-        case 'f':
-            sscanf(optarg,"%f",&global_args.filter);
-            global_args.flag_filter = 1;
-            break;
-        case 'z':
-            sscanf(optarg,"%f",&global_args.deadzone);
-            global_args.flag_deadzone = 1;
-            break;
         case 'p':
             global_args.flag_ping = 1;
             break;
@@ -300,6 +286,11 @@ int main (int argc, char **argv)
             printf("max_step_neg: ");
             scanf("%d", &global_args.max_step_neg);
             global_args.flag_max_step = 1;
+            break;
+        case 'c':
+            sscanf(optarg, "%d", &aux_int);
+            global_args.max_current = (int16_t)aux_int;
+            global_args.flag_max_current = 1;
             break;
         case 'h':
         case '?':
@@ -635,6 +626,12 @@ int main (int argc, char **argv)
         commStoreParams(&comm_settings_t, global_args.device_id);
     }
 
+    if (global_args.flag_max_current) {
+        commSetParam(&comm_settings_t, global_args.device_id,
+            PARAM_CURRENT_LIMIT, &(global_args.max_current), 1);
+        commStoreParams(&comm_settings_t, global_args.device_id);
+    }
+
 //==========================     closing serial port and closing the application
 
     closeRS485(&comm_settings_t);
@@ -655,57 +652,57 @@ int main (int argc, char **argv)
 
 void display_usage( void )
 {
-    puts("==========================================================================================");
-    puts( "qbmoveadmin - set up your QB Move" );
-    puts("=========================================================================================="); 
-    puts( "usage: qbmoveadmin [id] [-i<new id>k<control k>avh?]" );
-    puts("------------------------------------------------------------------------------------------"); 
+    puts("===============================================================================");
+    puts("===============================================================================");
+    puts( "handmoveadmin - set up your SoftHand" );
+    puts("==============================================================================="); 
+    puts( "usage: handmoveadmin [id] [-i <new id> -a -vh?]");
+    puts("-------------------------------------------------------------------------------"); 
     puts("Options:");
     puts("");
     puts(" -i, --id <new id>                    Change device's id.");
     puts(" -k, --PID_control_parameters         Set PID control constants.");
     puts(" -m, --input_mode                     Set input mode.");
-    puts(" -a, --activate_on_startup            Set motors active on startup.");
-    puts(" -d, --deactivate_on_startup          Set motors off on startup.");
-    puts(" -s, --resolution                     Change position resolution.");
-    puts(" -u, --meas_multiplier <value,...>    Set multiplier values that amplify measurements.");
+    puts(" -a, --activate_on_startup            Set motor control active on startup.");
+    puts(" -d, --deactivate_on_startup          Set motor control inactive on startup.");
+    puts(" -s, --resolution                     Change sensor resolution.");
+    puts(" -u, --meas_multiplier <value,...>    Set multiplier to amplify measurements.");
     puts("                                      Useful when using a joystick.");
-    puts(" -o, --meas_offset <value,...>        Adds a constant offset to the measured positions.");
-    puts("                                      Uses the same resolution of the inputs.");
-    puts(" -f, --filter <filter>                Measurement filter, should be from 0 to 1.");
-    puts(" -z, --deadzone <deadzone>            Control deadzone.");
+    puts(" -o, --meas_offset <value,...>        Adds a constant offset to the measured");
+    puts("                                      position using the same resolution");
+    puts("                                      of the inputs.");
     puts(" -r, --restore                        Restore factory default parameters.");
-    puts("");
     puts(" -p, --ping                           Get info on the device.");
     puts(" -l, --list_devices                   List devices connected.");
     puts(" -t, --serial_port                    Set up serial port.");
-    puts(" -q, --set_limit                      Set up limits for motor maximum range");
-    puts(" -w, --activate_limit                 Set or reset limits position");
-    puts(" -b, --max_step                       Set maximum number of step per cycle to slow");
-    puts("                                      down movements");
+    puts(" -q, --set_limit                      Set up limits for motor maximum range.");
+    puts(" -w, --activate_limit <value>         Set or reset limits position.");
+    puts(" -b, --max_step                       Set maximum number of step per cycle");
+    puts("                                      to slow down movements.");
+    puts(" -c, --max_current <value>            Set current limit in milliampere.");
     puts("");
     puts(" -v, --verbose                        Verbose mode.");
     puts(" -h, --help                           Shows this information.");
-    puts("------------------------------------------------------------------------------------------"); 
+    puts("-------------------------------------------------------------------------------"); 
     puts("Examples:");
     puts("");
-    puts("  qbmoveadmin -p                      Get info on whatever device is connected.");
-    puts("  qbmoveadmin -t                      Set up serial port.");
-    puts("  qbmoveadmin -l                      List devices connected.");    
-    puts("  qbmoveadmin 65 -i 10                Change id from 65 to 10.");    
-    puts("  qbmoveadmin 65 -k 0.1               Set control constant of device 65 to 0.1.");
-    puts("  qbmoveadmin 65 -m                   Set input mode.");    
-    puts("  qbmoveadmin 65 -a                   Set motors active on startup.");
-    puts("  qbmoveadmin 65 -d                   Set motors off on startup.");
-    puts("  qbmoveadmin 65 -s                   Change position resolution.");
-    puts("  qbmoveadmin 65 -u 2,2,2             Set measurement multipliers to 2x.");
-    puts("  qbmoveadmin 65 -o 100,100,100       Add an offset of 100 to all 3 measurements.");
-    puts("  qbmoveadmin 65 -f 0.1               Sets measurement filter to 0.1.");
-    puts("  qbmoveadmin 65 -z 0                 Sets position controller deadzone none.");
-    puts("  qbmoveadmin 65 -r                   Restore factory parameters.");
-    puts("  qbmoveadmin 65 -q                   Set limit for min and max position of both motors");
-    puts("  qbmoveadmin 65 -w [1 or 0]          Set or reset position limit");
-    puts("==========================================================================================");
+    puts("  handmoveadmin -p                    Get info on whatever device is connected.");
+    puts("  handmoveadmin -t                    Set up serial port.");
+    puts("  handmoveadmin -l                    List devices connected.");    
+    puts("  handmoveadmin 65 -i 10              Change id from 65 to 10.");    
+    puts("  handmoveadmin 65 -k 0.1             Set control constant of device 65 to 0.1.");
+    puts("  handmoveadmin 65 -m                 Set input mode.");    
+    puts("  handmoveadmin 65 -a                 Set motors active on startup.");
+    puts("  handmoveadmin 65 -d                 Set motors off on startup.");
+    puts("  handmoveadmin 65 -s                 Change position resolution.");
+    puts("  handmoveadmin 65 -u 2,2,2           Set measurement multipliers to 2x.");
+    puts("  handmoveadmin 65 -o 50,50,50        Add an offset of 50 to all measurements.");
+    puts("  handmoveadmin 65 -r                 Restore factory parameters.");
+    puts("  handmoveadmin 65 -q                 Set limit for min and max position");
+    puts("                                      for both motors.");
+    puts("  handmoveadmin 65 -w [1 or 0]        Set or reset position limit.");
+    puts("  handmoveadmin 65 -c 1000            Set current limit to 1000 mA.");
+    puts("===============================================================================");
     /* ... */
     exit( EXIT_FAILURE );
 }

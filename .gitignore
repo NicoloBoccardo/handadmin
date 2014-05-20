@@ -5,3 +5,6 @@ objs/handmove.o
 objs/handmoveadmin.o
 objs/handparam.o
 objs/qbmove_communications.o
+bin/handmove.exe
+bin/handmoveadmin.exe
+bin/handparam.exe
