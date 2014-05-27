@@ -5,7 +5,7 @@
 
 //=================================================================     includes
 
-#include "../../qbmoveAPI/qbmove_communications.h"
+#include "../../qbmoveAPI/src/qbmove_communications.h"
 #include "definitions.h"
 
 #include <stdio.h>
@@ -866,7 +866,7 @@ void int_handler(int sig) {
         fclose(global_args.log_file_fd);
 
         // erase last line of log file  /////////////BEGIN
-        char *tmpfilename = "tmpfile~~~";
+        const char *tmpfilename = "tmpfile~~~";
         char line[1000];
         char command[256];
         FILE *thefile = fopen(global_args.log_file, "r");
