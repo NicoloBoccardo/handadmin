@@ -22,4 +22,4 @@
 #define MOTOR_FILE "./conf_files/motor.conf"
 #define QBMOVE_FILE "./conf_files/qbmove.conf"
 #define HAND_CALIBRATION "./../calibration.csv"
-#define EMG_SAVED_VALUES "./../emg_values.csv"
+#define EMG_SAVED_VALUES "./emg_values.csv"

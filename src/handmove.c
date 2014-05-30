@@ -48,11 +48,10 @@ static const struct option longOpts[] = {
     { "get_currents", no_argument, NULL, 'c'},
     { "get_emg", no_argument, NULL, 'q'},
     { "bootloader", no_argument, NULL, 'b'},
-    { "set_pos_stiff", required_argument, NULL, 'e'},
     { NULL, no_argument, NULL, 0 }
 };
 
-static const char *optString = "s:adgptvh?f:lwzkcqbe:";
+static const char *optString = "s:adgptvh?f:lwzkcqb";
 
 struct global_args {
     int device_id;
@@ -69,7 +68,6 @@ struct global_args {
     int flag_set_zeros;             /* -z option */
     int flag_get_currents;          /* -c option */
     int flag_bootloader_mode;       /* -b option */
-    int flag_set_pos_stiff;         /* -e option */
     int flag_get_emg;               /* -q option */ 
 
 
@@ -179,7 +177,6 @@ int main (int argc, char **argv)
     global_args.flag_test			    = 0;
     global_args.flag_set_zeros          = 0;
     global_args.flag_bootloader_mode    = 0;
-    global_args.flag_set_pos_stiff      = 0;
     
     //===================================================     processing options
 
@@ -193,19 +190,13 @@ int main (int argc, char **argv)
                 global_args.inputs[1] = (short int) aux[1];
                 global_args.flag_set_inputs = 1;
                 break;
-            case 'e':
-                sscanf(optarg,"%d,%d", &aux[0], &aux[1]);
-                global_args.inputs[0] = (short int) aux[0];
-                global_args.inputs[1] = (short int) aux[1];
-                global_args.flag_set_pos_stiff = 1;
-                break;
             case 'g':
-                printf("Specify speed [0 - 200]: ");
-                scanf("%d", &aux_int);
-                global_args.calib_speed = (short int)aux_int;
-                printf("Specify repetitions [0 - 32767]: ");
-                scanf("%d", &aux_int);
-                global_args.calib_repetitions = (short int)aux_int;
+                // printf("Specify speed [0 - 200]: ");
+                // scanf("%d", &aux_int);
+                // global_args.calib_speed = (short int)aux_int;
+                // printf("Specify repetitions [0 - 32767]: ");
+                // scanf("%d", &aux_int);
+                // global_args.calib_repetitions = (short int)aux_int;
                 global_args.flag_get_measurements = 1;
                 break;
             case 'a':
@@ -450,21 +441,6 @@ int main (int argc, char **argv)
 
     }
 
-
-    //========================================================     set pos stiff
-
-    if(global_args.flag_set_pos_stiff)
-    {
-        if(global_args.flag_verbose)
-            printf("Setting pos to %d and stiffness to %d.\n",
-                    global_args.inputs[0], global_args.inputs[1]);
-
-        commSetPosStiff(&comm_settings_1, global_args.device_id,
-                global_args.inputs);
-
-    }
-
-
 //=========================================================     get measurements
 
     if(global_args.flag_get_measurements)
@@ -479,58 +455,25 @@ int main (int argc, char **argv)
         //     printf("Failed opening file\n");
         // }
 
-        printf("Speed: %d     Repetitions: %d\n", global_args.calib_speed, global_args.calib_repetitions);
-        commHandCalibrate(&comm_settings_1, global_args.device_id, global_args.calib_speed, global_args.calib_repetitions);
+        // printf("Speed: %d     Repetitions: %d\n", global_args.calib_speed, global_args.calib_repetitions);
+        // commHandCalibrate(&comm_settings_1, global_args.device_id, global_args.calib_speed, global_args.calib_repetitions);
 
-        usleep(100000);
-
-        //for (i = 0; i < 324; i++) {
-        // while(1) {
-        //     commGetCurrAndMeas(&comm_settings_1, global_args.device_id,
-        //         my_values);
-
-        //     printf("Curr1: %d \tMeas1: %d \t Flag: %d\n", my_values[0], my_values[1], my_values[2]);
-        //     fprintf(filep, "%d,%d\n", my_values[0], my_values[1]);
-
-        //     // if (my_values[2] == 0) {
-        //     //     break;
-        //     // }
-
-        //     usleep(100000);
-        // }
+        // usleep(100000);
 
         // fclose(filep);
 
-        
 
-        
+        while(1) {
+            commGetMeasurements(&comm_settings_1, global_args.device_id,
+                    global_args.measurements);
 
-        // printf("currents: %d, %d\n", my_values[0], my_values[1]);
-        // printf("meas: %d %d %d\n", my_values[2], my_values[3], my_values[4]);
-        
-        // if(global_args.flag_verbose)
-        //     puts("Getting measurements.");
-      
-        // commGetParam(&comm_settings_1, global_args.device_id,
-        //         PARAM_MEASUREMENT_OFFSET, global_args.measurements,3);
-
-		// printf("Offsets: ");
-  //       for (i = 0; i < NUM_OF_SENSORS; i++) {
-  //           printf("%d\t", global_args.measurements[i]);
-  //       }
-  //       printf("\n");
-
-        // while(1) {
-        //     commGetMeasurements(&comm_settings_1, global_args.device_id,
-        //             global_args.measurements);
-
-        //     printf("measurements: ");
-        //     for (i = 0; i < NUM_OF_SENSORS; i++) {
-        //         printf("%d\t", global_args.measurements[i]);
-        //     }
-        //     printf("\n");
-        //     usleep(100000);
-        // }
+            printf("measurements: ");
+            for (i = 0; i < NUM_OF_SENSORS; i++) {
+                printf("%d\t", global_args.measurements[i]);
+            }
+            printf("\n");
+            usleep(100000);
+        }
     }
 
     if(global_args.flag_bootloader_mode) {
@@ -955,23 +898,23 @@ void display_usage( void )
     puts("--------------------------------------------------------------------------------"); 
     puts("Options:");
     puts("");
-    puts(" -s, --set_inputs <value,value>   Send reference inputs to the QB Move.");
-    puts(" -e, --set_pos_stiff <pos,stiff>  Set position (degree) and stiffness (\%)");
-    puts(" -g, --get_measurements           Get measurements from the QB Move.");
-    puts(" -c, --get_currents               Get motor currents");
-    puts(" -a, --activate                   Activate the QB Move.");
-    puts(" -d, --deactivate                 Deactivate the QB Move.");
-    puts(" -z, --set_zeros                  Set zero position for all sensors");
-    puts("");
-    puts(" -f, --file <filename>            Pass a CSV file as input");
+    puts(" -s, --set_inputs <value,value>   Send reference inputs for both motors.");
+    puts(" -g, --get_measurements           Get measurements from the encoders.");
+    puts(" -c, --get_currents               Get motor currents.");
+    puts(" -q, --get_emg                    Get EMG values and save them in a file");
+    puts("                                  defined in \"definitions.h\". Use -v option");
+    puts("                                  to display values in the console too.");
+    puts(" -a, --activate                   Activate the motor control.");
+    puts(" -d, --deactivate                 Deactivate the motor control.");
+    puts(" -z, --set_zeros                  Set zero position for all sensors.");
     puts("");
     puts(" -p, --ping                       Get info on the device.");
-	puts(" -t, --serial_port                Set up serial port.");
+    puts(" -t, --serial_port                Set up serial port.");
     puts(" -b, --bootloader                 Enter bootloader mode.");
     puts(" -v, --verbose                    Verbose mode.");
     puts(" -h, --help                       Shows this information.");
-	puts("");
-    
+    puts("");
+    puts(" -f, --file <filename>            Pass a CSV file as input.");
     puts("                                  File is in the form:");
     puts("                                  millisecs,num_rows");
     puts("                                  input1_1,input2_1");
