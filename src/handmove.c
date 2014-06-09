@@ -18,11 +18,6 @@
 #include <math.h>
 #include <signal.h>
 
-// #include <unistd.h>  /* UNIX standard function definitions */
-// #include <fcntl.h>   /* File control definitions */
-// #include <errno.h>   /* Error number definitions */
-// #include <termios.h> /* POSIX terminal control definitions */
-// #include <sys/ioctl.h>
 
 #if defined(_WIN32) || defined(_WIN64)
     #include <windows.h>
@@ -48,10 +43,11 @@ static const struct option longOpts[] = {
     { "get_currents", no_argument, NULL, 'c'},
     { "get_emg", no_argument, NULL, 'q'},
     { "bootloader", no_argument, NULL, 'b'},
+    { "calibration", no_argument, NULL, 'k'},
     { NULL, no_argument, NULL, 0 }
 };
 
-static const char *optString = "s:adgptvh?f:lwzkcqb";
+static const char *optString = "s:adgptvh?f:lwzkcqbk";
 
 struct global_args {
     int device_id;
@@ -69,6 +65,7 @@ struct global_args {
     int flag_get_currents;          /* -c option */
     int flag_bootloader_mode;       /* -b option */
     int flag_get_emg;               /* -q option */ 
+    int flag_calibration;           /* -k option */ 
 
 
     short int inputs[NUM_OF_MOTORS];
@@ -191,12 +188,6 @@ int main (int argc, char **argv)
                 global_args.flag_set_inputs = 1;
                 break;
             case 'g':
-                // printf("Specify speed [0 - 200]: ");
-                // scanf("%d", &aux_int);
-                // global_args.calib_speed = (short int)aux_int;
-                // printf("Specify repetitions [0 - 32767]: ");
-                // scanf("%d", &aux_int);
-                // global_args.calib_repetitions = (short int)aux_int;
                 global_args.flag_get_measurements = 1;
                 break;
             case 'a':
@@ -235,6 +226,15 @@ int main (int argc, char **argv)
                 break;
             case 'q':
                 global_args.flag_get_emg = 1;
+                break;
+            case 'k':
+                printf("Specify speed [0 - 200]: ");
+                scanf("%d", &aux_int);
+                global_args.calib_speed = (short int)aux_int;
+                printf("Specify repetitions [0 - 32767]: ");
+                scanf("%d", &aux_int);
+                global_args.calib_repetitions = (short int)aux_int;
+                global_args.flag_calibration = 1;
                 break;
             case 'h':
             case '?':
@@ -365,16 +365,9 @@ int main (int argc, char **argv)
     //==========================================     calculate correction factor
 
     // retrieve current resolution
-    // while(commGetParam(&comm_settings_1, global_args.device_id,
-    //     PARAM_POS_RESOLUTION, resolution, NUM_OF_SENSORS) != 0) {}
+    while(commGetParam(&comm_settings_1, global_args.device_id,
+        PARAM_POS_RESOLUTION, resolution, NUM_OF_SENSORS) != 0) {}
 
-    resolution[0] = 1;
-    resolution[1] = 1;
-    resolution[2] = 1;
-
-
-
-    
     // calculate correction factor for every sensors
     for (i = 0; i < NUM_OF_SENSORS; i++) {
         correction_factor[i] = 65536.0/(360 << resolution[i]);
@@ -418,9 +411,6 @@ int main (int argc, char **argv)
             printf("len of aux_String: %d\n", (int)strlen(aux_string));
             puts(aux_string);
         }
-       
-
-        //puts(aux_string);
 
         if(global_args.flag_verbose)
             puts("Closing the application.");        
@@ -443,26 +433,7 @@ int main (int argc, char **argv)
 
 //=========================================================     get measurements
 
-    if(global_args.flag_get_measurements)
-    {
-
-        //int i;
-        //short int my_values[3];
-
-        // FILE* filep;
-        // filep = fopen(HAND_CALIBRATION, "w");
-        // if (filep == NULL) {
-        //     printf("Failed opening file\n");
-        // }
-
-        // printf("Speed: %d     Repetitions: %d\n", global_args.calib_speed, global_args.calib_repetitions);
-        // commHandCalibrate(&comm_settings_1, global_args.device_id, global_args.calib_speed, global_args.calib_repetitions);
-
-        // usleep(100000);
-
-        // fclose(filep);
-
-
+    if(global_args.flag_get_measurements) {
         while(1) {
             commGetMeasurements(&comm_settings_1, global_args.device_id,
                     global_args.measurements);
@@ -477,18 +448,30 @@ int main (int argc, char **argv)
     }
 
     if(global_args.flag_bootloader_mode) {
+
         printf("Entering bootloader mode\n");
         if(!commBootloader(&comm_settings_1, global_args.device_id)) {
             printf("DONE\n");    
         } else {
             printf("An error occurred...\n");
         }
-        
+
     }
-    
-//==========================================================     get_currents
+
+//==============================================================     calibration
+
+    if (global_args.flag_calibration) {
+
+        printf("Speed: %d     Repetitions: %d\n", global_args.calib_speed, global_args.calib_repetitions);
+        commHandCalibrate(&comm_settings_1, global_args.device_id, global_args.calib_speed, global_args.calib_repetitions);
+        usleep(100000);
+
+    }
+
+//=============================================================     get_currents
 
     if(global_args.flag_get_currents) {
+
         if(global_args.flag_verbose)
             puts("Getting currents.");
 
@@ -911,6 +894,7 @@ void display_usage( void )
     puts(" -p, --ping                       Get info on the device.");
     puts(" -t, --serial_port                Set up serial port.");
     puts(" -b, --bootloader                 Enter bootloader mode.");
+    puts(" -k, --calibration                Makes a series of opening and closing.");
     puts(" -v, --verbose                    Verbose mode.");
     puts(" -h, --help                       Shows this information.");
     puts("");
