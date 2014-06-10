@@ -8,7 +8,7 @@ LMFLAGS = -lm
 # folders
 BIN_FOLDER = ../bin
 OBJS_FOLDER = ../objs
-LIB_FOLDER = ../../qbmoveAPI/lib
+LIB_FOLDER = ../../qbAPI/lib
 
 
 
