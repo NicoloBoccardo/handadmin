@@ -81,7 +81,7 @@ static const struct option longOpts[] = {
     { NULL, no_argument, NULL, 0 }
 };
 
-static const char *optString = "i:kadsmu:o:prltqwbc:vh?";
+static const char *optString = "i:kadsmu:o:prltqw:bc:vh?";
 
 struct structglobal_args {
     int device_id;
